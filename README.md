@@ -26,7 +26,6 @@ The project uses the public [arXiv dataset](https://www.kaggle.com/datasets/Corn
 - TensorFlow/Keras
 - Scikit-learn
 - NLTK
-- Spacy
 - Django REST Framework
 - Poetry
 
@@ -51,4 +50,4 @@ Evaluate the model using the validation set and analyze metrics for insights int
 
 ## References
 - [arXiv Dataset on Kaggle](https://www.kaggle.com/datasets/Cornell-University/arxiv)
-- [Hugging Face Models](https://huggingface.co/models)
+- [Hugging Face bert-tiny model](https://huggingface.co/prajjwal1/bert-tiny)

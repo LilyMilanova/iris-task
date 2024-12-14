@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Research Article Classificator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        textarea {
+            width: 100%;
+            height: 350px;
+            margin-bottom: 15px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f4f4f4;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Research Article Classificator</h1>
+    <form method="post">
+        {% csrf_token %}
+        <label for="article_text">Enter Abstract:</label><br>
+        <textarea
+            name="article_text"
+            rows="8"
+            placeholder="Paste abstract or summary here..."
+        >{{ article_text }}</textarea>
+        <br>
+        <input type="submit" value="Classify Article">
+    </form>
+
+    {% if classification %}
+    <div class="result">
+        <h3>Article Classification: {{ classification }}</h3>
+    </div>
+    {% endif %}
+</body>
+</html>

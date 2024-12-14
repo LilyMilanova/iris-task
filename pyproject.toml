@@ -2,23 +2,27 @@
 name = "iris-task"
 version = "0.1.0"
 description = "Take home task"
-authors = ["Lilia Milanova <lilia.milanova@gmail.com>"]
+authors = ["Lilia Milanova"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.11"
-tensorflow = "2.16.2"
-pandas = "2.2.3"
+python = "3.10.16"
+tensorflow-macos = "2.15.0"
 numpy = "1.26.4"
-keras = "3.7.0"
-thinc = "8.2.5"
-spacy = "3.7.5"
-matplotlib = "3.9.3"
-seaborn = "0.13.2"
-wordcloud = "1.9.4"
-nltk = "3.9.1"
-scikit-learn = "1.6.0"
-
+transformers = "^4.47.0"
+tensorflow-metal = "^1.1.0"
+matplotlib = "3.9.2"
+datasets = "^3.2.0"
+scikit-learn = "^1.6.0"
+scikit-multilearn = "^0.2.0"
+pandas = "^2.2.3"
+accelerate = "^1.2.0"
+nltk = "^3.9.1"
+wordcloud = "^1.9.4"
+torch = "^2.5.1"
+django = "^5.1.4"
+optuna = "^4.1.0"
 
 [build-system]
 requires = ["poetry-core"]
