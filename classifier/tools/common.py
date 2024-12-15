@@ -1,5 +1,5 @@
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -36,40 +36,98 @@ def preprocess_abstract(abstract: str) -> str:
 
 def get_unique_categories(categories_column):
     all_categories = set()
-    for entry in categories_column:
-        all_categories.update(entry.strip().split())
+    for categories in categories_column:
+        all_categories.update(categories.strip().split())
     return sorted(all_categories)
 
 
-def plot_analysis(df=None):
+def plot_analysis(df=None, id2cat=None, df_title=None):
     if df is None or df.empty:
-        # resource_json_path = Path(__file__).parent.parent.parent / "data" / f"{SAMPLE_SNAPSHOT}.json"
-        # resource_json_path = Path(__file__).parent.parent.parent / "data" / f"arxiv-snapshot-unseen-sample_87%-json.json"
-        resource_json_path = Path(__file__).parent.parent.parent / "data" / f"arxiv-snapshot-training-json.json"
+        datasets_dir = Path(__file__).resolve().parents[2] / "data" / "datasets"
+        # resource_json_path = datasets_dir / f"{SAMPLE_SNAPSHOT}.json"
+        # resource_json_path = datasets_dir / f"arxiv-snapshot-unseen-sample_87%-json.json"
+        resource_json_path = datasets_dir / f"arxiv-snapshot-training-json.json"
         df = pd.read_json(resource_json_path)
         print(f"---> File {resource_json_path} loaded successfully.")
 
-    # 1. Occurrences of each grouped category
-    def group_categories(category):
-        return f"{category.split('.')[0]}.*"
+    # Recreate the "categories" column if "label" column exists
+    if "label" in df.columns and id2cat is not None:
+        df["categories"] = df["label"].apply(
+            lambda labels: " ".join([id2cat[idx] for idx, value in enumerate(labels) if value == 1])
+        )
 
-    df["grouped_categories"] = df["categories"].apply(lambda x: " ".join([group_categories(cat) for cat in x.split()]))
-    grouped_category_counts = df["grouped_categories"].str.split(expand=True).stack().value_counts().sort_index()
-
+    # 1. Occurrences of each category (fine-grained adjustment)
+    category_counts = df['categories'].str.split(expand=True).stack().value_counts().sort_index()
     plt.figure(figsize=(10, 6))
-    plt.bar(grouped_category_counts.index, grouped_category_counts.values)
+
+    counts = category_counts.values
+    threshold = np.percentile(counts, 66)  # Bottom 66% threshold
+    def adjust_height_category(value):
+        if value <= threshold:
+            return value * 10  # Fine-grained adjustment for bottom values
+        else:
+            return threshold * 10 + (value - threshold) / 6  # Coarse-grained adjustment for top values
+
+    adjusted_heights_category = [adjust_height_category(value) for value in counts]
+    plt.bar(category_counts.index, adjusted_heights_category)
     plt.xticks(rotation=55, ha='right')
-    plt.title("Number of Articles in Grouped Categories")
-    plt.xlabel("Category Group")
-    plt.ylabel("Count")
-    plt.yscale('symlog', linthresh=10)
-    y_ticks = plt.gca().get_yticks()
-    plt.gca().set_yticks(y_ticks)
-    plt.gca().set_yticklabels([f"{int(tick)}" for tick in y_ticks])
+    plt.title(f"Occurrences of Each Category{' in ' + df_title if df_title else ''}")
+    plt.xlabel("Category")
+    plt.ylabel("Count (Adjusted)")
+
+    # Adjust y-axis ticks to reflect the adjusted heights
+    y_ticks_adjusted_category = np.linspace(0, max(adjusted_heights_category), 10, dtype=int)
+    y_ticks_original_category = [round(
+        threshold * (tick / max(adjusted_heights_category)) if tick <= threshold * 10 else threshold + (
+                    tick - threshold * 10) * 6, 1) for tick in y_ticks_adjusted_category]
+
+    plt.ylim(0, max(adjusted_heights_category))
+    plt.gca().set_yticks(y_ticks_adjusted_category)
+    plt.gca().set_yticklabels([f"{int(tick)}" for tick in y_ticks_original_category])
+
     plt.tight_layout()
     plt.show()
 
-    # 2. Distribution of abstract word counts with a horizontal bar chart
+    # 2. Occurrences of each grouped category
+    def group_categories(category):
+        return f"{category.split('.')[0]}.*"
+
+    df["grouped_categories"] = df["categories"].apply(
+        lambda x: " ".join([group_categories(cat) for cat in x.split()]))
+    grouped_category_counts = df["grouped_categories"].str.split(expand=True).stack().value_counts().sort_index()
+
+    plt.figure(figsize=(10, 6))
+    counts = grouped_category_counts.values
+    threshold = np.percentile(counts, 50)  # Bottom 66% threshold
+    def adjust_height(value):
+        if value <= threshold:
+            return value * 100  # Fine-grained adjustment for bottom values
+        else:
+            return threshold * 100 + (value - threshold) / 6  # Coarse-grained adjustment for top values
+
+    adjusted_heights = [adjust_height(value) for value in counts]
+
+    plt.bar(grouped_category_counts.index, adjusted_heights)
+    plt.xticks(rotation=55, ha='right')
+    plt.title(f"Number of Articles in Grouped Categories{' in ' + df_title if df_title else ''}")
+    plt.xlabel("Category Group")
+    plt.ylabel("Count")
+    y_ticks_adjusted = np.linspace(0, max(adjusted_heights), 10, dtype=int)
+    y_ticks_original = [round(threshold * (tick / max(adjusted_heights))
+                        if tick <= threshold * 100
+                        else threshold + (tick - threshold * 100) * 6, 1)
+                        for tick in y_ticks_adjusted]
+    plt.ylim(0, max(adjusted_heights))
+    plt.gca().set_yticks(y_ticks_adjusted)
+    plt.gca().set_yticklabels([f"{int(tick)}" for tick in y_ticks_original])
+
+    plt.tight_layout()
+    plt.show()
+
+    if df_title:
+        return
+
+    # 3. Distribution of abstract word counts with a horizontal bar chart
     abstract_word_counts = df['abstract'].apply(lambda x: len(preprocess_abstract(x).split()))
     last = abstract_word_counts.max()
     word_count_bins = np.histogram(abstract_word_counts, bins=list(range(20, last // 3, 20)) + [last])
@@ -89,7 +147,7 @@ def plot_analysis(df=None):
     plt.tight_layout()
     plt.show()
 
-    # 3. Average Abstract Word Count per Category
+    # 4. Average Abstract Word Count per Category
     def length_per_category(df):
         category_word_counts = defaultdict(list)
         for _, row in df.iterrows():
@@ -129,7 +187,7 @@ def plot_analysis(df=None):
     plt.tight_layout()
     plt.show()
 
-    # 4. Number of entries with one, two, three, four or 5+ categories assigned
+    # 5. Number of entries with one, two, three, four or 5+ categories assigned
     def count_entries_by_category_count(categories_column):
         counts = categories_column.apply(lambda x: len(x.split()))
         bins = [1, 2, 3, np.inf]

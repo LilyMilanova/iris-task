@@ -22,12 +22,19 @@ The project uses the public [arXiv dataset](https://www.kaggle.com/datasets/Corn
   - Allows input of research article abstracts and returns predicted categories.
 
 ## Technologies Used
-- Python
-- TensorFlow/Keras
-- Scikit-learn
-- NLTK
-- Django REST Framework
-- Poetry
+- Python 3.10.16 
+- TensorFlow (including tensorflow-macos and tensorflow-metal)
+- PyTorch 
+- Hugging Face Transformers and Datasets
+- Scikit-learn and Scikit-multilearn 
+- NLTK 
+- Pandas 
+- NumPy 
+- Matplotlib 
+- WordCloud 
+- Optuna (for hyperparameter optimization)
+- Accelerate
+- Django (REST Framework)
 
 ## How to Use
 1. Clone the repository.
@@ -35,15 +42,34 @@ The project uses the public [arXiv dataset](https://www.kaggle.com/datasets/Corn
    ```bash
    poetry install
    ```
-3. Train the model:
+    Note: Tested only on Macos with Apple M2 chip.
+
+3. Create sample dataset for training:
+    - The original file from ArXiv `arxiv-metadata-oai-snapshot.json` is pre-processed as JSON array containing only the `abstracts` and `categories` columns and saved in `arxiv-snapshot-training-json.json`
+    - Then this file is used to extract samples of `<sample_size>%` percentage to be used for training
+    - Three approaches were tested to extract samples. The current one takes equal number of entries from each category and adjusts if some categories are rare
+   ```
+   cd classifier/tools
+   poetry run python create_sample.py
+   ```
+   Each dataset is stored in `/data/datasets` with the name ending in format `arxiv-snapshot-sample_<sample_size>%-json.json`
+
+4. Train the model:
+   - Specify `full_model_name` of base model in format `<repo_name>/<model_name>` e.g. `prajjwal1/bert-tiny`
+   - Hyperparameters search can be invoked using `hyp_search` and `n_trials` flags of `MultiLabelClassificationModelTrainer`
    ```bash
+   cd classifier/tools
    poetry run python train_model.py
    ```
-4. Run the API server:
-   ```bash
-   poetry run python manage.py runserver
-   ```
-5. Use the API to classify research article abstracts.
+   After training (best) model is saved in `/data/models/<model_name><sample_size>`. Sorted category to ID mapping are save for each trained model - only needed if sample size is small and not all categories are present. 
+
+5. Run the API server:
+   - choose a model from `/data/models` directory and configure it in `/classifier/article_classifier.json`.
+    ```bash
+    poetry run python manage.py runserver
+    ```
+
+6. Use the API to classify research article abstracts.
 
 ## Results
 Evaluate the model using the validation set and analyze metrics for insights into performance.
